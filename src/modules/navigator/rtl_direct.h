@@ -44,6 +44,7 @@
 #include <px4_platform_common/module_params.h>
 
 #include "mission_block.h"
+#include "navigation.h"
 
 #include <drivers/drv_hrt.h>
 #include <uORB/Subscription.hpp>
@@ -65,18 +66,6 @@ class Navigator;
 class RtlDirect : public MissionBlock, public ModuleParams
 {
 public:
-	/**
-	 * @brief Return to launch position.
-	 * Defines the position and landing yaw for the return to launch destination.
-	 *
-	 */
-	struct RtlPosition {
-		double lat;	/**< latitude in WGS84 [rad].*/
-		double lon;	/**< longitude in WGS84 [rad].*/
-		float alt;	/**< altitude in MSL [m].*/
-		float yaw;	/**< final yaw when landed [rad].*/
-	};
-
 	RtlDirect(Navigator *navigator);
 
 	~RtlDirect() = default;

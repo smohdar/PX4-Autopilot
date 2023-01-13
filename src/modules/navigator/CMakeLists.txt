@@ -50,7 +50,8 @@ set(NAVIGATOR_SOURCES
 	land.cpp
 	precland.cpp
 	mission_feasibility_checker.cpp
-	geofence.cpp)
+	geofence.cpp
+	vtol_land.cpp)
 
 if(CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF)
 	set(NAVIGATOR_SOURCES
