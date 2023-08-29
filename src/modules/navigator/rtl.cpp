@@ -271,6 +271,7 @@ void RTL::on_activation()
 		break;
 
 	case RtlType::VTOL_LAND:
+		_rtl_direct.setReturnAltMin(_enforce_rtl_alt);
 		_rtl_vtol_land.on_activation();
 		break;
 
@@ -342,6 +343,7 @@ void RTL::setRtlTypeAndDestination()
 				if (vtol_land) {
 					_rtl_type = RtlType::VTOL_LAND;
 					_rtl_vtol_land.setRtlApproach(rtl_position, chooseBestLandingApproach());
+					_rtl_vtol_land.setRtlAlt(rtl_alt);
 
 				} else {
 					_rtl_direct.setRtlAlt(rtl_alt);

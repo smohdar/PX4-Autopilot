@@ -51,6 +51,8 @@
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/rtl_time_estimate.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_land_detected.h>
+#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/wind.h>
 
 #include <px4_platform_common/module_params.h>
@@ -63,17 +65,20 @@ public:
 
 	void on_activation() override;
 	void on_active() override;
-	void on_inactive() override;
 
 	void setRtlApproach(RtlPosition rtl_position, loiter_point_s loiter_pos);
+	void setReturnAltMin(bool min) { _enforce_rtl_alt = min; };
+	void setRtlAlt(float alt) {_rtl_alt = alt;};
 
 	rtl_time_estimate_s calc_rtl_time_estimate();
 
 private:
 
 	enum class vtol_land_state {
-		MOVE_TO_LOITER = 0,
+		CLIMBING = 0,
+		MOVE_TO_LOITER,
 		LOITER_DOWN,
+		MOVE_TO_LAND,
 		TRANSITION_TO_MC,
 		LAND,
 		IDLE
@@ -82,13 +87,19 @@ private:
 	RtlPosition _rtl_position;
 	loiter_point_s _land_approach;
 
+	bool _enforce_rtl_alt{false};
+	float _rtl_alt{0.0f};	///< AMSL altitude at which the vehicle should return to the home position
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::RTL_RETURN_ALT>) _param_return_alt_rel_m,
 		(ParamFloat<px4::params::RTL_LOITER_RAD>) _param_rtl_loiter_rad
 	)
 
 	void set_loiter_position();
+	void setRtlItem();
 
 	uORB::SubscriptionData<vehicle_global_position_s> _global_pos_sub{ORB_ID(vehicle_global_position)};	/**< global position subscription */
 	uORB::SubscriptionData<home_position_s> _home_pos_sub{ORB_ID(home_position)};		/**< home position subscription */
+	uORB::SubscriptionData<vehicle_land_detected_s> _land_detected_sub{ORB_ID(vehicle_land_detected)};	/**< vehicle land detected subscription */
+	uORB::SubscriptionData<vehicle_local_position_s> _local_pos_sub{ORB_ID(vehicle_local_position)};	/**< vehicle status subscription */
 };
