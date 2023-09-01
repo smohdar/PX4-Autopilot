@@ -46,6 +46,7 @@
 
 #include <matrix/math.hpp>
 #include <mathlib/math/Utilities.hpp>
+#include "python/ekf_derivation/generated/state.h"
 
 namespace estimator
 {
