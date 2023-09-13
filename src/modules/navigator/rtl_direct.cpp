@@ -80,7 +80,6 @@ void RtlDirect::on_activation()
 	_local_pos_sub.update();
 	_land_detected_sub.update();
 	_vehicle_status_sub.update();
-	_wind_sub.update();
 
 	parameters_update();
 
@@ -112,7 +111,6 @@ void RtlDirect::on_active()
 	_local_pos_sub.update();
 	_land_detected_sub.update();
 	_vehicle_status_sub.update();
-	_wind_sub.update();
 
 	parameters_update();
 
@@ -490,6 +488,8 @@ void RtlDirect::advance_rtl()
 
 rtl_time_estimate_s RtlDirect::calc_rtl_time_estimate()
 {
+	_global_pos_sub.update();
+
 	rtl_time_estimate_s rtl_time_estimate{};
 
 	RTLState start_state_for_estimate{RTL_STATE_NONE};
