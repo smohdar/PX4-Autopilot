@@ -1046,6 +1046,8 @@ private:
 	// force symmetry when the argument is true
 	void fixCovarianceErrors(bool force_symmetry);
 
+	void constrainStateVar(const IdxDof &state, float min, float max);
+
 	// constrain the ekf states
 	void constrainStates();
 
