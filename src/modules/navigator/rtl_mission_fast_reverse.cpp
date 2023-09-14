@@ -164,14 +164,11 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 			// Go to Take off location
 			new_work_item_type = WorkItemType::WORK_ITEM_TYPE_TAKEOFF;
 
-			float altitude = _global_pos_sub.get().alt;
-
-			if (pos_sp_triplet->current.valid && pos_sp_triplet->current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
-				altitude = pos_sp_triplet->current.alt;
+			if (!PX4_ISFINITE(_mission_item.altitude)) {
+				_mission_item.altitude = _global_pos_sub.get().alt;
+				_mission_item.altitude_is_relative = false;
 			}
 
-			_mission_item.altitude = altitude;
-			_mission_item.altitude_is_relative = false;
 			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 			_mission_item.autocontinue = true;
 			_mission_item.time_inside = 0.0f;
