@@ -100,8 +100,14 @@ void RtlMissionFastReverse::setActiveMissionItems()
 		new_work_item_type = WorkItemType::WORK_ITEM_TYPE_TRANSITION_AFTER_TAKEOFF;
 
 	} else if (item_contains_position(_mission_item)) {
+		int32_t next_mission_item_index;
+		size_t num_found_items = 0;
+		getPreviousPositionItems(_mission.current_seq, &next_mission_item_index, num_found_items, 1u);
+
+		// If the current item is a takeoff item or there is no further position item start landing.
 		if (_mission_item.nav_cmd == NAV_CMD_TAKEOFF ||
-		    _mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF) {
+		    _mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF ||
+		    num_found_items == 0) {
 			handleLanding(new_work_item_type);
 
 		} else {
@@ -116,9 +122,6 @@ void RtlMissionFastReverse::setActiveMissionItems()
 			pos_sp_triplet->previous = pos_sp_triplet->current;
 		}
 
-		int32_t next_mission_item_index;
-		size_t num_found_items = 0;
-		getPreviousPositionItems(_mission.current_seq, &next_mission_item_index, num_found_items, 1u);
 		const dm_item_t dataman_id = static_cast<dm_item_t>(_mission.dataman_id);
 		mission_item_s next_mission_item;
 		bool success = _dataman_cache.loadWait(dataman_id, next_mission_item_index,
@@ -154,14 +157,13 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 {
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
-	bool needs_to_land = !_land_detected_sub.get().landed &&
-			     ((_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF) || (_mission_item.nav_cmd == NAV_CMD_TAKEOFF));
+	bool needs_to_land = !_land_detected_sub.get().landed;
 	bool vtol_in_fw = _vehicle_status_sub.get().is_vtol &&
 			  (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING);
 
 	if (needs_to_land) {
 		if (_work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT) {
-			// Go to Take off location
+			// Go to Take off/mission location
 			new_work_item_type = WorkItemType::WORK_ITEM_TYPE_TAKEOFF;
 
 			if (!PX4_ISFINITE(_mission_item.altitude)) {
