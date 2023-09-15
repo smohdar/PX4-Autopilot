@@ -119,15 +119,18 @@ void RtlMissionFast::setActiveMissionItems()
 		int32_t next_mission_item_index;
 		size_t num_found_items = 0;
 		getNextPositionItems(_mission.current_seq, &next_mission_item_index, num_found_items, 1u);
-		const dm_item_t dataman_id = static_cast<dm_item_t>(_mission.dataman_id);
-		mission_item_s next_mission_item;
-		bool success = _dataman_cache.loadWait(dataman_id, next_mission_item_index,
-						       reinterpret_cast<uint8_t *>(&next_mission_item), sizeof(mission_item_s), MAX_DATAMAN_LOAD_WAIT);
 
-		if (num_found_items > 0 && success) {
+		if (num_found_items > 0) {
 
-			mission_apply_limitation(next_mission_item);
-			mission_item_to_position_setpoint(next_mission_item, &pos_sp_triplet->next);
+			const dm_item_t dataman_id = static_cast<dm_item_t>(_mission.dataman_id);
+			mission_item_s next_mission_item;
+			bool success = _dataman_cache.loadWait(dataman_id, next_mission_item_index,
+							       reinterpret_cast<uint8_t *>(&next_mission_item), sizeof(mission_item_s), MAX_DATAMAN_LOAD_WAIT);
+
+			if (success) {
+				mission_apply_limitation(next_mission_item);
+				mission_item_to_position_setpoint(next_mission_item, &pos_sp_triplet->next);
+			}
 		}
 
 		mission_apply_limitation(_mission_item);
