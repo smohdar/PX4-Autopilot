@@ -283,8 +283,12 @@ void VehicleOpticalFlow::Run()
 
 				const float flow_dt = 1e-6f * vehicle_optical_flow.integration_timespan_us;
 
-				// compensate for body motion to give a LOS rate
-				const Vector2f flow_compensated_XY_rad = flow_xy_rad - gyro_xyz.xy();
+				// only compensate for body motion to give a LOS rate if the flow sensor has a non-zero flow measurement
+				Vector2f flow_compensated_XY_rad = flow_xy_rad;
+
+				if (abs(vehicle_optical_flow.pixel_flow[0]) > 0.0001f || abs(vehicle_optical_flow.pixel_flow[1]) > 0.0001f) {
+					flow_compensated_XY_rad = flow_xy_rad - gyro_xyz.xy();
+				}
 
 				Vector3f vel_optflow_body;
 				vel_optflow_body(0) = - range * flow_compensated_XY_rad(1) / flow_dt;
