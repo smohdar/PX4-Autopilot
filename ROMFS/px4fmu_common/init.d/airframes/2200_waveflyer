@@ -1,0 +1,87 @@
+#!/bin/sh
+#
+# @name WaveFlyer
+#
+# @type Standard Plane
+# @class Plane
+#
+# @output MAIN1 throttleLeft
+# @output MAIN2 frontLeft
+# @output MAIN3 rearLeft
+# @output MAIN4 throttleRight
+# @output MAIN5 frontRight
+# @output MAIN6 rearRight
+#
+# @output AUX1 feed-through of RC AUX1 channel
+# @output AUX2 feed-through of RC AUX2 channel
+# @output AUX3 feed-through of RC AUX3 channel
+#
+# @maintainer Marcus Pham <marcus@electro.aero>
+# @maintainer Shami Mohdar <shami@electronautic.com.au>
+#
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+. ${R}etc/init.d/rc.fw_defaults
+
+# airframe: 1 = fixed wing
+param set-default CA_AIRFRAME 1
+
+# number of motors: 2
+param set-default CA_ROTOR_COUNT 2
+
+# moment coefficitent of motor 1: negative = CW rotation
+param set-default CA_ROTOR0_KM -0.05
+
+# position of rotor along Y body axis: -0.2m
+param set-default CA_ROTOR0_PY -0.2
+
+# moment coefficitent of motor 2: positive = CCW rotation
+param set-default CA_ROTOR1_KM 0.05
+
+# position of rotor along Y body axis: 0.2m
+param set-default CA_ROTOR1_PY 0.2
+
+# number of control surfaces: 4
+param set-default CA_SV_CS_COUNT 4
+
+# servo 1: FL = 0.5 * PITCH - 0.5 * YAW
+# type of control surface of servo 1: 5 = custom
+param set-default CA_SV_CS0_TYPE 12
+
+# control surfaces pitch torque scaling of servo 1: 0.5 scalar
+param set-default CA_SV_CS0_TRQ_P 0.5
+
+# control surface roll torque scaling of servo 1: 0.5 scalar
+param set-default CA_SV_CS0_TRQ_Y -0.5
+
+# servo 2: FR = 0.5 * PITCH + 0.5 * YAW
+# type of control surface of servo 2: 6 = custom
+param set-default CA_SV_CS1_TYPE 12
+
+# control surfaces pitch torque scaling of servo 2: 0.5 scalar
+param set-default CA_SV_CS1_TRQ_P 0.5
+
+# control surface roll torque scaling of servo 2: 0.5 scalar
+param set-default CA_SV_CS1_TRQ_Y 0.5
+
+# servo 3: RR = -0.5 * PITCH - 0.5 * ROLL
+# type of control surface of servo 3: 5 = custom
+param set-default CA_SV_CS2_TYPE 12
+
+# control surfaces pitch torque scaling of servo 3: 0.5 scalar
+param set-default CA_SV_CS2_TRQ_P -0.5
+
+# control surface roll torque scaling of servo 3: 0.5 scalar
+param set-default CA_SV_CS2_TRQ_R -0.5
+
+# servo 4: RL = -0.5 * PITCH + 0.5 * ROLL
+# type of control surface of servo 4: 6 = custom
+param set-default CA_SV_CS3_TYPE 12
+
+# control surfaces pitch torque scaling of servo 4: 0.5 scalar
+param set-default CA_SV_CS3_TRQ_P -0.5
+
+# control surface roll torque scaling of servo 4: 0.5 scalar
+param set-default CA_SV_CS3_TRQ_R 0.5

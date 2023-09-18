@@ -45,6 +45,8 @@ px4_add_romfs_files(
 	2100_standard_plane
 	2106_albatross
 
+	2200_waveflyer
+
 	2507_cloudship
 
 	# [3000, 3999] Flying wing"
