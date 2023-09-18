@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2015-2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name ECL nor the names of its contributors may be
+ * 3. Neither the name PX4 nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -98,15 +98,14 @@ void Ekf::predictCovariance(const imuSample &imu_delayed)
 {
 	// Use average update interval to reduce accumulated covariance prediction errors due to small single frame dt values
 	const float dt = _dt_ekf_avg;
-	const float dt_inv = 1.f / dt;
 
 	// inhibit learning of imu accel bias if the manoeuvre levels are too high to protect against the effect of sensor nonlinearities or bad accel data is detected
 	// xy accel bias learning is also disabled on ground as those states are poorly observable when perpendicular to the gravity vector
 	const float alpha = math::constrain((dt / _params.acc_bias_learn_tc), 0.0f, 1.0f);
 	const float beta = 1.0f - alpha;
-	_ang_rate_magnitude_filt = fmaxf(dt_inv * imu_delayed.delta_ang.norm(), beta * _ang_rate_magnitude_filt);
-	_accel_magnitude_filt = fmaxf(dt_inv * imu_delayed.delta_vel.norm(), beta * _accel_magnitude_filt);
-	_accel_vec_filt = alpha * dt_inv * imu_delayed.delta_vel + beta * _accel_vec_filt;
+	_ang_rate_magnitude_filt = fmaxf(imu_delayed.delta_ang.norm() / imu_delayed.delta_ang_dt, beta * _ang_rate_magnitude_filt);
+	_accel_magnitude_filt = fmaxf(imu_delayed.delta_vel.norm() / imu_delayed.delta_vel_dt, beta * _accel_magnitude_filt);
+	_accel_vec_filt = alpha * imu_delayed.delta_vel / imu_delayed.delta_vel_dt + beta * _accel_vec_filt;
 
 	const bool is_manoeuvre_level_high = _ang_rate_magnitude_filt > _params.acc_bias_learn_gyr_lim
 					     || _accel_magnitude_filt > _params.acc_bias_learn_acc_lim;
@@ -179,23 +178,21 @@ void Ekf::predictCovariance(const imuSample &imu_delayed)
 	}
 
 	// Don't continue to grow the earth field variances if they are becoming too large or we are not doing 3-axis fusion as this can make the covariance matrix badly conditioned
-	float mag_I_sig;
+	float mag_I_sig = 0.0f;
 
 	if (_control_status.flags.mag && (P(16, 16) + P(17, 17) + P(18, 18)) < 0.1f) {
+#if defined(CONFIG_EKF2_MAGNETOMETER)
 		mag_I_sig = dt * math::constrain(_params.mage_p_noise, 0.0f, 1.0f);
-
-	} else {
-		mag_I_sig = 0.0f;
+#endif // CONFIG_EKF2_MAGNETOMETER
 	}
 
 	// Don't continue to grow the body field variances if they is becoming too large or we are not doing 3-axis fusion as this can make the covariance matrix badly conditioned
-	float mag_B_sig;
+	float mag_B_sig = 0.0f;
 
 	if (_control_status.flags.mag && (P(19, 19) + P(20, 20) + P(21, 21)) < 0.1f) {
+#if defined(CONFIG_EKF2_MAGNETOMETER)
 		mag_B_sig = dt * math::constrain(_params.magb_p_noise, 0.0f, 1.0f);
-
-	} else {
-		mag_B_sig = 0.0f;
+#endif // CONFIG_EKF2_MAGNETOMETER
 	}
 
 	float wind_vel_nsd_scaled;
@@ -216,7 +213,7 @@ void Ekf::predictCovariance(const imuSample &imu_delayed)
 	// assign IMU noise variances
 	// inputs to the system are 3 delta angles and 3 delta velocities
 	float gyro_noise = math::constrain(_params.gyro_noise, 0.0f, 1.0f);
-	const float d_ang_var = sq(dt * gyro_noise);
+	const float d_ang_var = sq(imu_delayed.delta_ang_dt * gyro_noise);
 
 	float accel_noise = math::constrain(_params.accel_noise, 0.0f, 1.0f);
 
@@ -225,10 +222,10 @@ void Ekf::predictCovariance(const imuSample &imu_delayed)
 	for (int i = 0; i <= 2; i++) {
 		if (_fault_status.flags.bad_acc_vertical || imu_delayed.delta_vel_clipping[i]) {
 			// Increase accelerometer process noise if bad accel data is detected
-			d_vel_var(i) = sq(dt * BADACC_BIAS_PNOISE);
+			d_vel_var(i) = sq(imu_delayed.delta_vel_dt * BADACC_BIAS_PNOISE);
 
 		} else {
-			d_vel_var(i) = sq(dt * accel_noise);
+			d_vel_var(i) = sq(imu_delayed.delta_vel_dt * accel_noise);
 		}
 	}
 
@@ -236,7 +233,10 @@ void Ekf::predictCovariance(const imuSample &imu_delayed)
 	SquareMatrix24f nextP;
 
 	// calculate variances and upper diagonal covariances for quaternion, velocity, position and gyro bias states
-	sym::PredictCovariance(getStateAtFusionHorizonAsVector(), P, imu_delayed.delta_vel, d_vel_var, imu_delayed.delta_ang, d_ang_var, dt, &nextP);
+	sym::PredictCovariance(getStateAtFusionHorizonAsVector(), P,
+		imu_delayed.delta_vel, imu_delayed.delta_vel_dt, d_vel_var,
+		imu_delayed.delta_ang, imu_delayed.delta_ang_dt, d_ang_var,
+		&nextP);
 
 	// compute noise variance for stationary processes
 	Vector24f process_noise;
@@ -423,7 +423,11 @@ void Ekf::fixCovarianceErrors(bool force_symmetry)
 #endif // CONFIG_EKF2_EXTERNAL_VISION
 
 			if (bad_vz_gps || bad_vz_ev) {
+#if defined(CONFIG_EKF2_BAROMETER)
 				bool bad_z_baro = _control_status.flags.baro_hgt && (down_dvel_bias * _aid_src_baro_hgt.innovation < 0.0f);
+#else
+				bool bad_z_baro = false;
+#endif
 				bool bad_z_gps  = _control_status.flags.gps_hgt  && (down_dvel_bias * _aid_src_gnss_hgt.innovation < 0.0f);
 
 #if defined(CONFIG_EKF2_RANGE_FINDER)
@@ -550,6 +554,7 @@ void Ekf::resetQuatCov(const float yaw_noise)
 
 void Ekf::resetMagCov()
 {
+#if defined(CONFIG_EKF2_MAGNETOMETER)
 	if (_mag_decl_cov_reset) {
 		ECL_INFO("reset mag covariance");
 		_mag_decl_cov_reset = false;
@@ -559,6 +564,11 @@ void Ekf::resetMagCov()
 	P.uncorrelateCovarianceSetVariance<3>(19, sq(_params.mag_noise));
 
 	saveMagCovData();
+#else
+	P.uncorrelateCovarianceSetVariance<3>(16, 0.f);
+	P.uncorrelateCovarianceSetVariance<3>(19, 0.f);
+
+#endif
 }
 
 void Ekf::resetGyroBiasZCov()

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2015-2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name ECL nor the names of its contributors may be
+ * 3. Neither the name PX4 nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -200,7 +200,9 @@ void Ekf::resetVerticalPositionTo(const float new_vert_pos, float new_vert_pos_v
 
 	_state_reset_status.reset_count.posD++;
 
+#if defined(CONFIG_EKF2_BAROMETER)
 	_baro_b_est.setBias(_baro_b_est.getBias() + delta_z);
+#endif // CONFIG_EKF2_BAROMETER
 #if defined(CONFIG_EKF2_EXTERNAL_VISION)
 	_ev_hgt_b_est.setBias(_ev_hgt_b_est.getBias() - delta_z);
 #endif // CONFIG_EKF2_EXTERNAL_VISION
@@ -234,13 +236,16 @@ void Ekf::constrainStates()
 	_state.accel_bias = matrix::constrain(_state.accel_bias, -accel_bias_limit, accel_bias_limit);
 
 	_state.mag_I = matrix::constrain(_state.mag_I, -1.0f, 1.0f);
+#if defined(CONFIG_EKF2_MAGNETOMETER)
 	_state.mag_B = matrix::constrain(_state.mag_B, -getMagBiasLimit(), getMagBiasLimit());
+#endif // CONFIG_EKF2_MAGNETOMETER
+
 	_state.wind_vel = matrix::constrain(_state.wind_vel, -100.0f, 100.0f);
 }
 
+#if defined(CONFIG_EKF2_BARO_COMPENSATION)
 float Ekf::compensateBaroForDynamicPressure(const float baro_alt_uncompensated) const
 {
-#if defined(CONFIG_EKF2_BARO_COMPENSATION)
 	if (_control_status.flags.wind && local_position_is_valid()) {
 		// calculate static pressure error = Pmeas - Ptruth
 		// model position error sensitivity as a body fixed ellipse with a different scale in the positive and
@@ -268,11 +273,11 @@ float Ekf::compensateBaroForDynamicPressure(const float baro_alt_uncompensated) 
 		// correct baro measurement using pressure error estimate and assuming sea level gravity
 		return baro_alt_uncompensated + pstatic_err / (_air_density * CONSTANTS_ONE_G);
 	}
-#endif // CONFIG_EKF2_BARO_COMPENSATION
 
 	// otherwise return the uncorrected baro measurement
 	return baro_alt_uncompensated;
 }
+#endif // CONFIG_EKF2_BARO_COMPENSATION
 
 // calculate the earth rotation vector
 Vector3f Ekf::calcEarthRateNED(float lat_rad) const
@@ -359,32 +364,6 @@ void Ekf::getAuxVelInnovVar(float aux_vel_innov_var[2]) const
 	aux_vel_innov_var[1] = _aid_src_aux_vel.innovation_variance[1];
 }
 #endif // CONFIG_EKF2_AUXVEL
-
-#if defined(CONFIG_EKF2_OPTICAL_FLOW)
-void Ekf::getFlowInnov(float flow_innov[2]) const
-{
-	flow_innov[0] = _aid_src_optical_flow.innovation[0];
-	flow_innov[1] = _aid_src_optical_flow.innovation[1];
-}
-
-void Ekf::getFlowInnovVar(float flow_innov_var[2]) const
-{
-	flow_innov_var[0] = _aid_src_optical_flow.innovation_variance[0];
-	flow_innov_var[1] = _aid_src_optical_flow.innovation_variance[1];
-}
-
-void Ekf::getTerrainFlowInnov(float flow_innov[2]) const
-{
-	flow_innov[0] = _aid_src_terrain_optical_flow.innovation[0];
-	flow_innov[1] = _aid_src_terrain_optical_flow.innovation[1];
-}
-
-void Ekf::getTerrainFlowInnovVar(float flow_innov_var[2]) const
-{
-	flow_innov_var[0] = _aid_src_terrain_optical_flow.innovation_variance[0];
-	flow_innov_var[1] = _aid_src_terrain_optical_flow.innovation_variance[1];
-}
-#endif // CONFIG_EKF2_OPTICAL_FLOW
 
 // get the state vector at the delayed time horizon
 matrix::Vector<float, 24> Ekf::getStateAtFusionHorizonAsVector() const
@@ -602,9 +581,8 @@ void Ekf::get_ekf_ctrl_limits(float *vxy_max, float *vz_max, float *hagl_min, fl
 		*hagl_min = rangefinder_hagl_min;
 		*hagl_max = rangefinder_hagl_max;
 	}
-#endif // CONFIG_EKF2_RANGE_FINDER
 
-#if defined(CONFIG_EKF2_OPTICAL_FLOW)
+# if defined(CONFIG_EKF2_OPTICAL_FLOW)
 	// Keep within flow AND range sensor limits when exclusively using optical flow
 	const bool relying_on_optical_flow = isOnlyActiveSourceOfHorizontalAiding(_control_status.flags.opt_flow);
 
@@ -622,7 +600,9 @@ void Ekf::get_ekf_ctrl_limits(float *vxy_max, float *vz_max, float *hagl_min, fl
 		*hagl_min = flow_hagl_min;
 		*hagl_max = flow_hagl_max;
 	}
-#endif // CONFIG_EKF2_OPTICAL_FLOW
+# endif // CONFIG_EKF2_OPTICAL_FLOW
+
+#endif // CONFIG_EKF2_RANGE_FINDER
 }
 
 void Ekf::resetImuBias()
@@ -671,6 +651,7 @@ void Ekf::get_innovation_test_status(uint16_t &status, float &mag, float &vel, f
 	// return the largest magnetometer innovation test ratio
 	mag = 0.f;
 
+#if defined(CONFIG_EKF2_MAGNETOMETER)
 	if (_control_status.flags.mag_hdg) {
 		mag = math::max(mag, sqrtf(_aid_src_mag_heading.test_ratio));
 	}
@@ -678,6 +659,7 @@ void Ekf::get_innovation_test_status(uint16_t &status, float &mag, float &vel, f
 	if (_control_status.flags.mag_3D) {
 		mag = math::max(mag, sqrtf(Vector3f(_aid_src_mag.test_ratio).max()));
 	}
+#endif // CONFIG_EKF2_MAGNETOMETER
 
 #if defined(CONFIG_EKF2_GNSS_YAW)
 	if (_control_status.flags.gps_yaw) {
@@ -726,10 +708,12 @@ void Ekf::get_innovation_test_status(uint16_t &status, float &mag, float &vel, f
 	float hgt_sum = 0.f;
 	int n_hgt_sources = 0;
 
+#if defined(CONFIG_EKF2_BAROMETER)
 	if (_control_status.flags.baro_hgt) {
 		hgt_sum += sqrtf(_aid_src_baro_hgt.test_ratio);
 		n_hgt_sources++;
 	}
+#endif // CONFIG_EKF2_BAROMETER
 
 	if (_control_status.flags.gps_hgt) {
 		hgt_sum += sqrtf(_aid_src_gnss_hgt.test_ratio);
@@ -762,10 +746,22 @@ void Ekf::get_innovation_test_status(uint16_t &status, float &mag, float &vel, f
 	tas = sqrtf(_aid_src_airspeed.test_ratio);
 #endif // CONFIG_EKF2_AIRSPEED
 
-#if defined(CONFIG_EKF2_RANGE_FINDER)
-	// return the terrain height innovation test ratio
-	hagl = sqrtf(_hagl_test_ratio);
+	hagl = NAN;
+#if defined(CONFIG_EKF2_TERRAIN)
+# if defined(CONFIG_EKF2_RANGE_FINDER)
+	if (_hagl_sensor_status.flags.range_finder) {
+		// return the terrain height innovation test ratio
+		hagl = sqrtf(_aid_src_terrain_range_finder.test_ratio);
+	}
 #endif // CONFIG_EKF2_RANGE_FINDER
+
+# if defined(CONFIG_EKF2_OPTICAL_FLOW)
+	if (_hagl_sensor_status.flags.flow) {
+		// return the terrain height innovation test ratio
+		hagl = sqrtf(math::max(_aid_src_terrain_optical_flow.test_ratio[0], _aid_src_terrain_optical_flow.test_ratio[1]));
+	}
+# endif // CONFIG_EKF2_OPTICAL_FLOW
+#endif // CONFIG_EKF2_TERRAIN
 
 #if defined(CONFIG_EKF2_SIDESLIP)
 	// return the synthetic sideslip innovation test ratio
@@ -784,13 +780,16 @@ void Ekf::get_ekf_soln_status(uint16_t *status) const
 	soln_status.flags.pos_horiz_rel = (_control_status.flags.gps || _control_status.flags.ev_pos || _control_status.flags.opt_flow) && (_fault_status.value == 0);
 	soln_status.flags.pos_horiz_abs = (_control_status.flags.gps || _control_status.flags.ev_pos) && (_fault_status.value == 0);
 	soln_status.flags.pos_vert_abs = soln_status.flags.velocity_vert;
+#if defined(CONFIG_EKF2_TERRAIN)
 	soln_status.flags.pos_vert_agl = isTerrainEstimateValid();
+#endif // CONFIG_EKF2_TERRAIN
 	soln_status.flags.const_pos_mode = !soln_status.flags.velocity_horiz;
 	soln_status.flags.pred_pos_horiz_rel = soln_status.flags.pos_horiz_rel;
 	soln_status.flags.pred_pos_horiz_abs = soln_status.flags.pos_horiz_abs;
 
 	bool mag_innov_good = true;
 
+#if defined(CONFIG_EKF2_MAGNETOMETER)
 	if (_control_status.flags.mag_hdg) {
 		if (_aid_src_mag_heading.test_ratio < 1.f) {
 			mag_innov_good = false;
@@ -801,6 +800,7 @@ void Ekf::get_ekf_soln_status(uint16_t *status) const
 			mag_innov_good = false;
 		}
 	}
+#endif // CONFIG_EKF2_MAGNETOMETER
 
 	const bool gps_vel_innov_bad = Vector3f(_aid_src_gnss_vel.test_ratio).max() > 1.f;
 	const bool gps_pos_innov_bad = Vector2f(_aid_src_gnss_pos.test_ratio).max() > 1.f;
@@ -917,15 +917,19 @@ float Ekf::getYawVar() const
 	return yaw_var;
 }
 
+#if defined(CONFIG_EKF2_BAROMETER)
 void Ekf::updateGroundEffect()
 {
 	if (_control_status.flags.in_air && !_control_status.flags.fixed_wing) {
+#if defined(CONFIG_EKF2_TERRAIN)
 		if (isTerrainEstimateValid()) {
 			// automatically set ground effect if terrain is valid
 			float height = _terrain_vpos - _state.pos(2);
 			_control_status.flags.gnd_effect = (height < _params.gnd_effect_max_hgt);
 
-		} else if (_control_status.flags.gnd_effect) {
+		} else
+#endif // CONFIG_EKF2_TERRAIN
+		if (_control_status.flags.gnd_effect) {
 			// Turn off ground effect compensation if it times out
 			if (isTimedOut(_time_last_gnd_effect_on, GNDEFFECT_TIMEOUT)) {
 				_control_status.flags.gnd_effect = false;
@@ -936,6 +940,7 @@ void Ekf::updateGroundEffect()
 		_control_status.flags.gnd_effect = false;
 	}
 }
+#endif // CONFIG_EKF2_BAROMETER
 
 void Ekf::increaseQuatYawErrVariance(float yaw_variance)
 {
@@ -943,26 +948,6 @@ void Ekf::increaseQuatYawErrVariance(float yaw_variance)
 	sym::RotVarNedToLowerTriangularQuatCov(getStateAtFusionHorizonAsVector(), Vector3f(0.f, 0.f, yaw_variance), &q_cov);
 	q_cov.copyLowerToUpperTriangle();
 	P.slice<4, 4>(0, 0) += q_cov;
-}
-
-void Ekf::saveMagCovData()
-{
-	// save the NED axis covariance sub-matrix
-	_saved_mag_ef_covmat = P.slice<3, 3>(16, 16);
-
-	// save the XYZ body covariance sub-matrix
-	_saved_mag_bf_covmat = P.slice<3, 3>(19, 19);
-}
-
-void Ekf::loadMagCovData()
-{
-	// re-instate the NED axis covariance sub-matrix
-	P.uncorrelateCovarianceSetVariance<3>(16, 0.f);
-	P.slice<3, 3>(16, 16) = _saved_mag_ef_covmat;
-
-	// re-instate the XYZ body axis covariance sub-matrix
-	P.uncorrelateCovarianceSetVariance<3>(19, 0.f);
-	P.slice<3, 3>(19, 19) = _saved_mag_bf_covmat;
 }
 
 void Ekf::resetQuatStateYaw(float yaw, float yaw_variance)

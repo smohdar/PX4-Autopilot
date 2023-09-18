@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019-2023 PX4 Development Team. All rights reserved.
+ * Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,26 +31,16 @@
  *
  ****************************************************************************/
 
+
 /**
- * @file test_EKF_utils.cpp
+ * ASP5033 differential pressure sensor (external I2C)
  *
- * @brief Unit tests for the miscellaneous EKF utilities
+ * @reboot_required true
+ * @group Sensors
+ * @boolean
  */
+PARAM_DEFINE_INT32(SENS_EN_ASP5033, 0);
 
-#include <gtest/gtest.h>
-#include <cmath>
-#include <vector>
-#include <mathlib/mathlib.h>
 
-TEST(eclPowfTest, compareToStandardImplementation)
-{
-	std::vector<int> exponents = {-3, -2, -1, -0, 0, 1, 2, 3};
-	std::vector<float> bases = {-INFINITY, -11.1f, -0.5f, -0.f, 0.f, 0.5f, 11.1f, INFINITY};
 
-	for (auto const exponent : exponents) {
-		for (auto const basis : bases) {
-			EXPECT_EQ(powf(basis, exponent),
-				  std::pow(basis, static_cast<float>(exponent)));
-		}
-	}
-}
+

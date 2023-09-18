@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019-2023 PX4 Development Team. All rights reserved.
+ * Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,50 +31,64 @@
  *
  ****************************************************************************/
 
-/**
- * Feeds Ekf external vision data
- * @author Kamil Ritz <ka.ritz@hotmail.com>
- */
-#ifndef EKF_VIO_H
-#define EKF_VIO_H
 
-#include "sensor.h"
+#include "ASP5033.hpp"
+#include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-namespace sensor_simulator
+
+
+
+void ASP5033::print_usage()
 {
-namespace sensor
+	PRINT_MODULE_DESCRIPTION(
+		R"DESCR_STR(
+### Description
+Driver to enable an external [ASP5033]
+(https://www.qio-tek.com/index.php/product/qiotek-asp5033-dronecan-airspeed-and-compass-module/)
+TE connected via I2C.
+This is not included by default in firmware. It can be included with terminal command: "make <your_board> boardconfig"
+or in default.px4board with adding the line: "CONFIG_DRIVERS_DIFFERENTIAL_PRESSURE_ASP5033=y"
+It can be enabled with the "SENS_EN_ASP5033" parameter set to 1.
+)DESCR_STR");
+	PRINT_MODULE_USAGE_NAME("asp5033", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("airspeed_sensor");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x6D);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+}
+
+extern "C" int asp5033_main(int argc, char *argv[])
 {
 
-class Vio: public Sensor
-{
-public:
-	Vio(std::shared_ptr<Ekf> ekf);
-	~Vio();
+	using ThisDriver = ASP5033;
+	BusCLIArguments cli{true, false};
+	cli.i2c_address = I2C_ADDRESS_DEFAULT;
+	cli.default_i2c_frequency = I2C_SPEED;
 
-	void setData(const extVisionSample &vio_data);
-	void setVelocityVariance(const Vector3f &velVar);
-	void setPositionVariance(const Vector3f &posVar);
-	void setAngularVariance(float angVar);
-	void setVelocity(const Vector3f &vel);
-	void setPosition(const Vector3f &pos);
-	void setOrientation(const Quatf &quat);
+	const char *verb = cli.parseDefaultArguments(argc, argv);
 
-	void setVelocityFrameToLocalNED();
-	void setVelocityFrameToLocalFRD();
-	void setVelocityFrameToBody();
 
-	void setPositionFrameToLocalNED();
-	void setPositionFrameToLocalFRD();
 
-	extVisionSample dataAtRest();
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
+	}
 
-private:
-	extVisionSample _vio_data;
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_DIFF_PRESS_DEVTYPE_ASP5033);
 
-	void send(uint64_t time) override;
 
-};
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 
-} // namespace sensor
-} // namespace sensor_simulator
-#endif // !EKF_VIO_H
+	} else if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+
+	} else if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
+}

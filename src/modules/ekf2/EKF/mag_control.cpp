@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2019-2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name ECL nor the names of its contributors may be
+ * 3. Neither the name PX4 nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -123,17 +123,17 @@ void Ekf::controlMagFusion()
 
 bool Ekf::checkHaglYawResetReq() const
 {
+#if defined(CONFIG_EKF2_TERRAIN)
 	// We need to reset the yaw angle after climbing away from the ground to enable
 	// recovery from ground level magnetic interference.
 	if (_control_status.flags.in_air && _control_status.flags.yaw_align && !_control_status.flags.mag_aligned_in_flight) {
 		// Check if height has increased sufficiently to be away from ground magnetic anomalies
 		// and request a yaw reset if not already requested.
-#if defined(CONFIG_EKF2_RANGE_FINDER)
 		static constexpr float mag_anomalies_max_hagl = 1.5f;
 		const bool above_mag_anomalies = (getTerrainVPos() - _state.pos(2)) > mag_anomalies_max_hagl;
 		return above_mag_anomalies;
-#endif // CONFIG_EKF2_RANGE_FINDER
 	}
+#endif // CONFIG_EKF2_TERRAIN
 
 	return false;
 }

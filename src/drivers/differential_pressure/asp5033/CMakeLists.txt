@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2019-2023 PX4 Development Team. All rights reserved.
+# Copyright (c) 2023 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,12 +30,14 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-
-
-set(SRCS
-	reset_logging_checker.cpp
-	comparison_helper.cpp
-   )
-
-add_library(ecl_test_helper ${SRCS})
-target_link_libraries(ecl_test_helper ecl_EKF)
+px4_add_module(
+	MODULE drivers__differential_pressure__asp5033
+	MAIN asp5033
+	COMPILE_FLAGS
+	SRCS
+		asp5033_main.cpp
+		ASP5033.cpp
+		ASP5033.hpp
+	DEPENDS
+		px4_work_queue
+	)
