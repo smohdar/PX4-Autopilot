@@ -83,6 +83,7 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 	_arming_status_controller(_node),
 	_beep_controller(_node),
 	_esc_controller(_node),
+	_electron_send_controller(_node),
 	_servo_controller(_node),
 	_hardpoint_controller(_node),
 	_safety_state_controller(_node),
@@ -581,6 +582,12 @@ UavcanNode::init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events)
 			}
 		}
 	}
+
+	_electron_send_controller.init();
+
+	printf("Initialising EN Send \n");
+
+	_electron_send_controller.sendTelemetry(500);
 
 	// Start the Node
 	return _node.start();

@@ -160,6 +160,9 @@ px4_add_module(
 		actuators/hardpoint.cpp
 		actuators/servo.cpp
 
+		#Custom EN
+		actuators/electron.cpp
+
 		# Sensors
 		sensors/sensor_bridge.cpp
 		sensors/differential_pressure.cpp

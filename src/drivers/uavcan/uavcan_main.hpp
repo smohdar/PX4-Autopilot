@@ -59,6 +59,8 @@
 #include "uavcan_driver.hpp"
 #include "uavcan_servers.hpp"
 
+#include "actuators/electron.hpp"
+
 #include <lib/drivers/device/Device.hpp>
 #include <lib/mixer_module/mixer_module.hpp>
 #include <lib/perf/perf_counter.h>
@@ -228,6 +230,7 @@ private:
 	UavcanArmingStatus		_arming_status_controller;
 	UavcanBeepController		_beep_controller;
 	UavcanEscController		_esc_controller;
+	UavcanElectron			_electron_send_controller;
 	UavcanServoController		_servo_controller;
 	UavcanMixingInterfaceESC 	_mixing_interface_esc{_node_mutex, _esc_controller};
 	UavcanMixingInterfaceServo 	_mixing_interface_servo{_node_mutex, _servo_controller};
