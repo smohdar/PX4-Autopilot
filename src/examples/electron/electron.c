@@ -43,6 +43,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <uORB/topics/battery_status.h>
+#include <uORB/topics/actuator_outputs.h>
 // #include <uORB/topics/vehicle_gps_position.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,32 +137,39 @@ int electron_daemon_app_main(int argc, char *argv[]) {
 	//Structs to contain the system state
 	struct battery_status_s battStatus;
 	memset(&battStatus, 0, sizeof(battStatus));
-	// struct vehicle_gps_position_s vehPos;
-	// memset(&vehPos, 0, sizeof(vehPos));
+	// v1
+	struct actuator_outputs_s outputsStatus;
+	memset(&outputsStatus, 1, sizeof(outputsStatus));
 
 	//Subscribe to topics
 	int batt_sub = orb_subscribe(ORB_ID(battery_status));
-	// int vehPos_sub = orb_subscribe(ORB_ID(vehicle_gps_position));
+	// v1
+	int outputs_sub = orb_subscribe(ORB_ID(actuator_outputs));
 
 	while(!thread_should_exit) {
 
 		//check for any new update
 		bool battStatusUpdated;
 		orb_check(batt_sub, &battStatusUpdated);
-
-		// bool vehPosUpdated;
-		// orb_check(vehPos_sub, &vehPosUpdated);
+		// v1
+		bool actuatorStatusUpdated;
+		orb_check(outputs_sub, &actuatorStatusUpdated);
 
 		//copy a local copy, can also check for any change with above boolean
 		orb_copy(ORB_ID(battery_status), batt_sub, &battStatus);
+		// v1
+		orb_copy(ORB_ID(actuator_outputs), outputs_sub, &outputsStatus);
 
- 		printf("BattVoltage=%.2f , ", (double)battStatus.voltage_v);
- 		printf("BattCurrent=%.2f , ", (double)battStatus.current_a);
-
- 		// orb_copy(ORB_ID(vehicle_gps_position), vehPos_sub, &vehPos);
-
- 		// printf("Speed:%.2f \n", (double)vehPos.vel_m_s);
-
+ 		// printf("BattVoltage=%.2f | ", (double)battStatus.voltage_v);
+ 		// printf("BattCurrent=%.2f\n", (double)battStatus.current_a);
+		// v1
+		printf("Left Motor = %f | ", (double)outputsStatus.output[0]);
+		printf("Right Motor = %f\n", (double)outputsStatus.output[1]);
+		printf("Front Left Servo = %f | ", (double)outputsStatus.output[4]);
+		printf("Front Right Servo = %f\n", (double)outputsStatus.output[5]);
+		printf("Rear Left Servo = %f | ", (double)outputsStatus.output[6]);
+		printf("Rear Right Servo = %f\n", (double)outputsStatus.output[7]);
+		printf("\n");
  		sleep(1);
 	}
 

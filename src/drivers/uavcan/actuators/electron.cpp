@@ -49,99 +49,35 @@ void UavcanElectron::periodic_update(const uavcan::TimerEvent &) {
 	}
 
 	//check for any new update
-
-	bool battStatusUpdated;
-	orb_check(batt_sub, &battStatusUpdated);
-
-	// bool vehPosUpdated;
-	// orb_check(vehPos_sub, &vehPosUpdated);
-
-	// bool adcReportUpdated;
-	// orb_check(adcRep_sub, &adcReportUpdated);
-
 	bool actOutputsUpdated;
 	orb_check(actOut_sub, &actOutputsUpdated);
 
-	bool vehAttUpdated;
-	orb_check(vehAtt_sub, &vehAttUpdated);
-
-	bool disSenUpdated;
-	orb_check(disSen_sub, &disSenUpdated);
-
 	//copy a local copy, can also check for any change with above boolean
-
-	if(battStatusUpdated) {
-		orb_copy(ORB_ID(battery_status), batt_sub, &battStatus);
-	}
-	// if(vehPosUpdated) {
- 	// 	orb_copy(ORB_ID(vehicle_gps_position), vehPos_sub, &vehPos);
-	// }
-
-	// if(adcReportUpdated) {
- 	// 	orb_copy(ORB_ID(adc_report), adcRep_sub, &adcReport);
-	// }
-
 	if(actOutputsUpdated) {
 		orb_copy(ORB_ID(actuator_outputs), actOut_sub, &actuatorOutputs);
 	}
 
-	if(vehAttUpdated) {
-		orb_copy(ORB_ID(vehicle_attitude), vehAtt_sub, &vehicleAttitude);
-	}
-
-	if(disSenUpdated) {
-		orb_copy(ORB_ID(distance_sensor), disSen_sub, &distanceSensor);
-	}
-
- 	//orb_copy(ORB_ID(system_power), sysPow_sub, &sysPower);
+	//Remap motor & servo to 0-255
+	int LM = (((int)actuatorOutputs.output[0] == 1900) ? 255 : (((int)actuatorOutputs.output[0] - 1100) / 25) * 8);
+	int RM = (((int)actuatorOutputs.output[1] == 1900) ? 255 : (((int)actuatorOutputs.output[1] - 1100) / 25) * 8);
+	int FLS = (((int)actuatorOutputs.output[4] == 2000) ? 255 : (((int)actuatorOutputs.output[4] - 1000) / 125) * 32);
+	int FRS = (((int)actuatorOutputs.output[5] == 2000) ? 255 : (((int)actuatorOutputs.output[5] - 1000) / 125) * 32);
+	int RLS = (((int)actuatorOutputs.output[6] == 2000) ? 255 : (((int)actuatorOutputs.output[6] - 1000) / 125) * 32);
+	int RRS = (((int)actuatorOutputs.output[7] == 2000) ? 255 : (((int)actuatorOutputs.output[7] - 1000) / 125) * 32);
 
 	uavcan::equipment::Electron msg;
 
-	//First Packet
-	msg.buffer = 1;
-	//in decavolts
-	msg.voltage = (int)((double)battStatus.voltage_filtered_v*100.0);
-	//in m/s
-	// msg.speed =  (int)((double)vehPos.vel_m_s*100.0);
+	// msg.buffer = 1;
+	msg.leftMotor = LM;
+	msg.rightMotor = RM;
 
-
-	//Second Packet
 	// msg.buffer2 = 2;
-	//scale factor for current 20.48
-	// msg.currentLeft = (int)(adcReport.raw_data[1]/20.48);
-	// msg.currentRight = (int)(adcReport.raw_data[7]/20.48);
+	msg.FLServo = FLS;
+	msg.FRServo = FRS;
 
-
-	//Third Packet
-	msg.buffer2 = 2;
-	msg.quatW = (long)((double)vehicleAttitude.q[0]*1000000000.0);
-
-	msg.buffer3 = 3;
-	msg.quatX = (long)((double)vehicleAttitude.q[1]*1000000000.0);
-
-	msg.buffer4 = 4;
-	msg.quatY = (long)((double)vehicleAttitude.q[2]*1000000000.0);
-
-	msg.buffer5 = 5;
-	msg.quatZ = (long)((double)vehicleAttitude.q[3]*1000000000.0);
-
-
-	//Fifth Packet, ntoe need to check the resolution/scale of this....
-	msg.buffer6 = 6;
-	msg.servo1 = (int)actuatorOutputs.output[0];
-	msg.servo2 = (int)actuatorOutputs.output[1];
-	msg.servo3 = (int)actuatorOutputs.output[2];
-
-
-	//Fifth Packet, ntoe need to check the resolution/scale of this....
-	msg.buffer7 = 7;
-	msg.servo4 = (int)actuatorOutputs.output[3];
-	msg.servo5 = (int)actuatorOutputs.output[4];
-	msg.servo6 = (int)actuatorOutputs.output[5];
-
-	//Sixth Packet
-	// msg.buffer9 = 8;
-	// msg.distanceSensor = (long)((double)distanceSensor.current_distance*1000.0);
+	// msg.buffer3 = 3;
+	msg.RLServo = RLS;
+	msg.RRServo = RRS;
 
 	// Broadcast command at MAX_RATE_HZ
 	(void)_uavcan_pub_electron_send.broadcast(msg);

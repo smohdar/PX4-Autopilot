@@ -32,7 +32,7 @@
 ############################################################################
 px4_add_module(
 	MODULE examples__electron
-	MAIN ea_ems
+	MAIN electron
 	SRCS
 		electron.c
 	DEPENDS
